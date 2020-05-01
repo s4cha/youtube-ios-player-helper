@@ -110,10 +110,9 @@
 			};
 			buildConfigurationList = B3C76A141B975AA700F375B4 /* Build configuration list for PBXProject "youtube-ios-player-helper" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				English,
 				en,
 			);
 			mainGroup = B3C76A101B975AA700F375B4;
