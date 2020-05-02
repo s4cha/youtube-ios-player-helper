@@ -22,6 +22,53 @@
 
 import UIKit
 
+/** These enums represent the resolution of the currently loaded video. */
+public enum YTPlaybackQuality: String {
+    case small
+    case medium
+    case large
+    case hd720
+    case hd1080
+    case highres
+    case auto /** Addition for YouTube Live Events. */
+    case `default`
+    case unknown /** This should never be returned. It is here for future proofing. */
+}
+
+/** These enums represent the state of the current video in the player. */
+public enum YTPlayerState: String {
+    case unstarted = "-1"
+    case ended = "0"
+    case playing = "1"
+    case paused = "2"
+    case buffering = "3"
+    case queued = "5"
+    case unknown = "unknown"
+}
+
+/** These enums represent error codes thrown by the player. */
+public enum YTPlayerError: String, Error {
+    case invalidParam = "2"
+    case html5Error = "5"
+    case videoNotFound = "100"
+    case cannotFindVideo = "105"
+    case notEmbeddable = "101"
+    case sameAsNotEmbeddable = "150"
+    case unknown
+}
+// Functionally equivalent error codes 100 and 105 have been collapsed into |kYTPlayerErrorVideoNotFound|.
+// Functionally equivalent error codes 101 and 150 have been collapsed into |kYTPlayerErrorNotEmbeddable|.
+
+// Constants representing player callbacks.
+enum YTPlayerCallback: String {
+    case onReady // "onReady"
+    case onStateChange
+    case onPlaybackQualityChange
+    case onError
+    case onPlayTime
+    case onYouTubeIframeAPIFailedToLoad
+}
+
 /**
 * YTPlayerView is a custom UIView that client developers will use to include YouTube
 * videos in their iOS applications. It can be instantiated programmatically, or via
@@ -38,41 +85,7 @@ public class YTPlayerView: UIView {
     
     private var originURL: URL?
     private var initialLoadingView: UIView?
-//    private static let frameworkBundle = Bundle(path: "\(Bundle(for: YTPlayerView.self).resourcePath!)/Assets.bundle")
     
-    
-    /**
-     * This method loads the player with the given video ID.
-     * This is a convenience method for calling YTPlayerView::loadPlayerWithVideoId:withPlayerVars:
-     * without player variables.
-     *
-     * This method reloads the entire contents of the UIWebView and regenerates its HTML contents.
-     * To change the currently loaded video without reloading the entire UIWebView, use the
-     * YTPlayerView::cueVideoById:startSeconds:suggestedQuality: family of methods.
-     *
-     * @param videoId The YouTube video ID of the video to load in the player view.
-     * @return YES if player has been configured correctly, NO otherwise.
-     */
-    func loadWith(videoId: String) -> Bool {
-        return loadWith(videoId:videoId, playerVars: nil)
-    }
-    
-    /**
-    * This method loads the player with the given playlist ID.
-    * This is a convenience method for calling YTPlayerView::loadWithPlaylistId:withPlayerVars:
-    * without player variables.
-    *
-    * This method reloads the entire contents of the UIWebView and regenerates its HTML contents.
-    * To change the currently loaded video without reloading the entire UIWebView, use the
-    * YTPlayerView::cuePlaylistByPlaylistId:index:startSeconds:suggestedQuality:
-    * family of methods.
-    *
-    * @param playlistId The YouTube playlist ID of the playlist to load in the player view.
-    * @return YES if player has been configured correctly, NO otherwise.
-    */
-    func loadWith(playlistId: String) -> Bool {
-      return loadWith(playlistId: playlistId, playerVars: nil)
-    }
     
     /**
      * This method loads the player with the given video ID and player variables. Player variables
@@ -144,7 +157,7 @@ public class YTPlayerView: UIView {
      * @return YES if successful, NO if not.
      */
     func loadWith(playerParams additionalPlayerParams: [String: AnyHashable]?) -> Bool {
-        var playerCallbacks = [
+        let playerCallbacks = [
             "onReady" : "onReady",
             "onStateChange" : "onStateChange",
             "onPlaybackQualityChange" : "onPlaybackQualityChange",
@@ -168,7 +181,7 @@ public class YTPlayerView: UIView {
         playerParams["events"] = playerCallbacks
 
         if playerParams["playerVars"] != nil {
-            var playerVars = playerParams["playerVars"] as! [String: AnyHashable]
+            let playerVars = playerParams["playerVars"] as! [String: AnyHashable]
             if let urlString = playerVars["origin"] as? String {
                 self.originURL = URL(string: urlString)
             } else {
@@ -184,28 +197,8 @@ public class YTPlayerView: UIView {
         webView = createNewWebView()
         addSubview(webView)
 
-        let error: NSError? = nil
-        let path:String? = nil
-        
-//        path = Bundle(for: YTPlayerView.self).path(forResource: "YTPlayerView-iframe-player", ofType: "html", inDirectory: "Assets")
-//        print(Bundle(for: YTPlayerView.self))
-//        print(path)
-//
-//        // in case of using Swift and embedded frameworks, resources included not in main bundle,
-//        // but in framework bundle
-//        if (path == nil) {
-//            path =  frameworkBundle?.path(forResource: "YTPlayerView-iframe-player", ofType: "html", inDirectory: "Assets")
-//        }
-//        print(path)
-//
-//        let embedHTMLTemplate = try! String(contentsOfFile: path!, encoding: .utf8)
         
         let embedHTMLTemplate = ytPlayerHTMLString
-        
-        if error != nil {
-//            print("Received error rendering template: \(error)")
-            return false
-        }
 
         // Render the playerVars as a JSON dictionary.
         if let jsonData = try? JSONSerialization.data(withJSONObject: playerParams, options: JSONSerialization.WritingOptions.prettyPrinted), let playerVarsJsonString = String(data: jsonData, encoding: .utf8), let originURL = originURL {
@@ -249,7 +242,7 @@ public class YTPlayerView: UIView {
      *   https://developers.google.com/youtube/iframe_api_reference#pauseVideo
      */
     func pauseVideo() {
-        if let url = URL(string: String(format:"ytplayer://onStateChange?data=%@", kYTPlayerStatePausedCode)) {
+        if let url = URL(string: String(format:"ytplayer://onStateChange?data=%@", YTPlayerState.paused.rawValue)) {
             notifyDelegateOfYouTubeCallbackUrl(url: url)
         }
         interpret("player.pauseVideo();")
@@ -310,7 +303,7 @@ public class YTPlayerView: UIView {
                       startSeconds: Float,
                       suggestedQuality: YTPlaybackQuality) {
         let startSecondsValue:NSNumber = NSNumber(value: startSeconds)
-        let qualityValue = stringForPlaybackQuality(suggestedQuality)
+        let qualityValue = suggestedQuality.rawValue
         let javascript = String(format: "player.cueVideoById('%@', %@, '%@');", videoId, startSecondsValue, qualityValue)
         interpret(javascript)
     }
@@ -333,7 +326,7 @@ public class YTPlayerView: UIView {
                       suggestedQuality: YTPlaybackQuality) {
         let startSecondsValue = NSNumber(value: startSeconds)
         let endSecondsValue = NSNumber(value :endSeconds)
-        let quality = stringForPlaybackQuality(suggestedQuality)
+        let quality = suggestedQuality.rawValue
         let javascript = String(format: "player.cueVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@, 'suggestedQuality': '%@'});", videoId, startSecondsValue, endSecondsValue, quality)
         interpret(javascript)
     }
@@ -350,7 +343,7 @@ public class YTPlayerView: UIView {
     */
     func loadVideoById(videoId: String, startSeconds: Float, suggestedQuality: YTPlaybackQuality) {
         let startSecondsValue = NSNumber(value:startSeconds)
-        let quality = stringForPlaybackQuality(suggestedQuality)
+        let quality = suggestedQuality.rawValue
         let javascript = String(format: "player.loadVideoById('%@', %@, '%@');", videoId, startSecondsValue, quality)
         interpret(javascript)
     }
@@ -369,7 +362,7 @@ public class YTPlayerView: UIView {
     func loadVideoById(videoId: String, startSeconds: Float, endSeconds: Float, suggestedQuality: YTPlaybackQuality) {
         let startSecondsValue = NSNumber(value:startSeconds)
         let endSecondsValue = NSNumber(value:endSeconds)
-        let quality = stringForPlaybackQuality(suggestedQuality)
+        let quality = suggestedQuality.rawValue
         let javascript = String(format:"player.loadVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@, 'suggestedQuality': '%@'});",videoId, startSecondsValue, endSecondsValue, quality)
         interpret(javascript)
     }
@@ -388,7 +381,7 @@ public class YTPlayerView: UIView {
                        startSeconds: Float,
                        suggestedQuality: YTPlaybackQuality) {
         let startSecondsValue = NSNumber(value: startSeconds)
-        let qualityValue = stringForPlaybackQuality(suggestedQuality)
+        let qualityValue = suggestedQuality.rawValue
         let javascript = String(format:"player.cueVideoByUrl('%@', %@, '%@');", videoURL, startSecondsValue, qualityValue)
         interpret(javascript)
     }
@@ -410,7 +403,7 @@ public class YTPlayerView: UIView {
                        suggestedQuality: YTPlaybackQuality) {
         let startSecondsValue = NSNumber(value: startSeconds)
         let endSecondsValue = NSNumber(value: endSeconds)
-        let quality = stringForPlaybackQuality(suggestedQuality)
+        let quality = suggestedQuality.rawValue
         let javascript = String(format: "player.cueVideoByUrl('%@', %@, %@, '%@');", videoURL, startSecondsValue, endSecondsValue, quality)
         interpret(javascript)
     }
@@ -429,7 +422,7 @@ public class YTPlayerView: UIView {
                         startSeconds: Float,
                         suggestedQuality: YTPlaybackQuality) {
         let startSecondsValue = NSNumber(value:startSeconds)
-        let qualityValue = stringForPlaybackQuality(suggestedQuality)
+        let qualityValue = suggestedQuality.rawValue
         let command = String(format: "player.loadVideoByUrl('%@', %@, '%@');", videoURL, startSecondsValue, qualityValue)
         interpret(command)
     }
@@ -451,7 +444,7 @@ public class YTPlayerView: UIView {
                         suggestedQuality:YTPlaybackQuality) {
         let startSecondsValue = NSNumber(value: startSeconds)
         let endSecondsValue = NSNumber(value: endSeconds)
-        let quality = stringForPlaybackQuality(suggestedQuality)
+        let quality = suggestedQuality.rawValue
             let javascript = String(format:"player.loadVideoByUrl('%@', %@, %@, '%@');",
           videoURL, startSecondsValue, endSecondsValue, quality)
         interpret(javascript)
@@ -644,8 +637,7 @@ public class YTPlayerView: UIView {
     * @return |YTPlayerState| representing the state of the player.
     */
     func playerState() -> YTPlayerState  {
-      let value = interpret("player.getPlayerState();")
-      return playerStateForString(value ?? "")
+        YTPlayerState(rawValue: interpret("player.getPlayerState();") ?? "") ?? .unknown
     }
 
     /**
@@ -686,7 +678,7 @@ public class YTPlayerView: UIView {
     * @param quality YTPlaybackQuality value to suggest for the player.
     */
     func setPlaybackQuality(suggestedQuality: YTPlaybackQuality) {
-        let quality =  stringForPlaybackQuality(suggestedQuality)
+        let quality =  suggestedQuality.rawValue
         let javascript = String(format:"player.setPlaybackQuality('%@');", quality)
         interpret(javascript)
     }
@@ -827,99 +819,7 @@ public class YTPlayerView: UIView {
      * @return An enum value representing the playback quality.
      */
     func playbackQualityForString(_ qualityString: String) -> YTPlaybackQuality {
-        var quality:YTPlaybackQuality = .unknown
-        if qualityString == kYTPlaybackQualitySmallQuality {
-            quality = .small
-        } else if qualityString == kYTPlaybackQualityMediumQuality {
-            quality = .medium
-        } else if qualityString == kYTPlaybackQualityLargeQuality {
-            quality = .large
-        } else if qualityString == kYTPlaybackQualityHD720Quality {
-            quality = .hd720
-        } else if qualityString == kYTPlaybackQualityHD1080Quality {
-            quality = .hd1080
-        } else if qualityString == kYTPlaybackQualityHighResQuality {
-            quality = .highRes
-        } else if qualityString == kYTPlaybackQualityAutoQuality {
-            quality = .auto
-        }
-        return quality
-    }
-
-    /**
-     * Convert a |YTPlaybackQuality| value from the typed value to NSString.
-     *
-     * @param quality A |YTPlaybackQuality| parameter.
-     * @return An |NSString| value to be used in the JavaScript bridge.
-     */
-    func stringForPlaybackQuality(_ quality: YTPlaybackQuality) -> String {
-      switch quality {
-      case .small:
-          return kYTPlaybackQualitySmallQuality
-      case .medium:
-          return kYTPlaybackQualityMediumQuality
-      case .large:
-          return kYTPlaybackQualityLargeQuality
-      case .hd720:
-          return kYTPlaybackQualityHD720Quality
-      case .hd1080:
-          return kYTPlaybackQualityHD1080Quality
-      case .highRes:
-          return kYTPlaybackQualityHighResQuality
-      case .auto:
-          return kYTPlaybackQualityAutoQuality
-        default:
-          return kYTPlaybackQualityUnknownQuality
-      }
-    }
-
-    /**
-     * Convert a state value from NSString to the typed enum value.
-     *
-     * @param stateString A string representing player state. Ex: "-1", "0", "1".
-     * @return An enum value representing the player state.
-     */
-    func playerStateForString(_ stateString: String) -> YTPlayerState {
-        var state: YTPlayerState = .unknown
-        if stateString == kYTPlayerStateUnstartedCode {
-            state = .unstarted
-        } else if stateString == kYTPlayerStateEndedCode {
-            state = .ended
-        } else if stateString == kYTPlayerStatePlayingCode {
-            state = .playing
-        } else if stateString == kYTPlayerStatePausedCode {
-            state = .paused
-        } else if stateString == kYTPlayerStateBufferingCode {
-            state = .buffering
-        } else if stateString == kYTPlayerStateCuedCode {
-            state = .queued
-        }
-        return state
-    }
-
-    /**
-     * Convert a state value from the typed value to NSString.
-     *
-     * @param quality A |YTPlayerState| parameter.
-     * @return A string value to be used in the JavaScript bridge.
-     */
-    func stringForPlayerState(_ state: YTPlayerState) -> String {
-      switch state {
-      case .unstarted:
-          return kYTPlayerStateUnstartedCode
-      case .ended:
-          return kYTPlayerStateEndedCode
-      case .playing:
-          return kYTPlayerStatePlayingCode
-      case .paused:
-          return kYTPlayerStatePausedCode
-      case .buffering:
-          return kYTPlayerStateBufferingCode
-      case .queued:
-          return kYTPlayerStateCuedCode
-        default:
-          return kYTPlayerStateUnknownCode
-      }
+        return YTPlaybackQuality(rawValue: qualityString) ?? YTPlaybackQuality.unknown
     }
 
     // MARK: - Private methods
@@ -933,66 +833,52 @@ public class YTPlayerView: UIView {
      * @param url A URL of the format ytplayer://action?data=value.
      */
     private func notifyDelegateOfYouTubeCallbackUrl(url: URL)  {
-        let action = url.host
-
+        guard let action = YTPlayerCallback(rawValue: url.host ?? "") else {
+            return
+        }
+    
         // We know the query can only be of the format ytplayer://action?data=SOMEVALUE,
         // so we parse out the value.
         let query = url.query
-        var data = query?.components(separatedBy: "=").first
-
-        if action == kYTPlayerCallbackOnReady {
+        let data = query?.components(separatedBy: "=").first
+        
+        switch action {
+        case .onReady:
             initialLoadingView?.removeFromSuperview()
             delegate?.playerViewDidBecomeReady(playerView: self)
-        } else if action == kYTPlayerCallbackOnStateChange {
-            var state = YTPlayerState.unknown
-            if data == kYTPlayerStateEndedCode {
-                state = .ended
-            } else if data == kYTPlayerStatePlayingCode {
-                state = .playing
-            } else if data == kYTPlayerStatePausedCode {
-                state = .paused
-            } else if data == kYTPlayerStateBufferingCode {
-                state = .buffering
-            } else if data == kYTPlayerStateCuedCode {
-                state = .queued
-            } else if data == kYTPlayerStateUnstartedCode {
-                state = .unstarted
-            }
+        case .onStateChange:
+            let state = YTPlayerState(rawValue: data ?? "") ?? .unknown
             delegate?.playerViewDidChangeToState(playerView: self, state: state)
-        } else if action == kYTPlayerCallbackOnPlaybackQualityChange {
-            let quality: YTPlaybackQuality = playbackQualityForString(data!)
+        case .onPlaybackQualityChange:
+            let quality = playbackQualityForString(data!)
             delegate?.playerViewDidChangeToQuality(playerView: self, quality: quality)
-        } else if action == kYTPlayerCallbackOnError {
-            var error: YTPlayerError = .unknown
-            if data == kYTPlayerErrorInvalidParamErrorCode {
-                error = .invalidParam
-            } else if data == kYTPlayerErrorHTML5ErrorCode {
-                error = .html5Error
-            } else if data == kYTPlayerErrorNotEmbeddableErrorCode
-                || data == kYTPlayerErrorSameAsNotEmbeddableErrorCode {
-                error = .notEmbeddable
-            } else if data == kYTPlayerErrorVideoNotFoundErrorCode
-                || data == kYTPlayerErrorCannotFindVideoErrorCode {
-                error = .videoNotFound
-            }
+        case .onError:
+            let error = YTPlayerError(rawValue: data ?? "") ?? .unknown
             delegate?.playerViewReceivedError(playerView: self, error: error)
-        } else if action == kYTPlayerCallbackOnPlayTime {
-            var time: Float = (data as? NSString)?.floatValue ?? 0
+        case .onPlayTime:
+            let time: Float = (data as? NSString)?.floatValue ?? 0
             delegate?.playerViewDidPlayTime(playerView: self, playTime: time)
-        } else if action == kYTPlayerCallbackOnYouTubeIframeAPIFailedToLoad {
+        case .onYouTubeIframeAPIFailedToLoad:
             initialLoadingView?.removeFromSuperview()
         }
     }
 
     func handleHttpNavigationToUrl(url: URL) -> Bool {
-      // Usually this means the user has clicked on the YouTube logo or an error message in the
-      // player. Most URLs should open in the browser. The only http(s) URL that should open in this
-      // UIWebView is the URL for the embed, which is of the format:
-      //     http(s)://www.youtube.com/embed/[VIDEO ID]?[PARAMETERS]
-      let ytRegex = try! NSRegularExpression(pattern: kYTPlayerEmbedUrlRegexPattern,
-                                        options: NSRegularExpression.Options.caseInsensitive)
+        // Usually this means the user has clicked on the YouTube logo or an error message in the
+        // player. Most URLs should open in the browser. The only http(s) URL that should open in this
+        // UIWebView is the URL for the embed, which is of the format:
+        //     http(s)://www.youtube.com/embed/[VIDEO ID]?[PARAMETERS]
+        
+        let kYTPlayerEmbedUrlRegexPattern = "^http(s)://(www.)youtube.com/embed/(.*)$"
+        let kYTPlayerAdUrlRegexPattern = "^http(s)://pubads.g.doubleclick.net/pagead/conversion/"
+        let kYTPlayerOAuthRegexPattern = "^http(s)://accounts.google.com/o/oauth2/(.*)$"
+        let kYTPlayerStaticProxyRegexPattern = "^https://content.googleapis.com/static/proxy.html(.*)$"
+        let kYTPlayerSyndicationRegexPattern = "^https://tpc.googlesyndication.com/sodar/(.*).html$"
         
         let range = NSRange(location: 0, length: url.absoluteString.count)
+        
+        let ytRegex = try! NSRegularExpression(pattern: kYTPlayerEmbedUrlRegexPattern,
+                                               options: NSRegularExpression.Options.caseInsensitive)
         let ytMatch = ytRegex.firstMatch(in: url.absoluteString,
                                     options: [], range: range)
         
@@ -1041,7 +927,7 @@ public class YTPlayerView: UIView {
                      suggestedQuality: YTPlaybackQuality) {
         let indexValue = NSNumber(value: index)
         let startSecondsValue = NSNumber(value:startSeconds)
-        let quality = stringForPlaybackQuality(suggestedQuality)
+        let quality = suggestedQuality.rawValue
         let javascript = String(format: "player.cuePlaylist(%@, %@, %@, '%@');",
           cueingString, indexValue, startSecondsValue, quality)
         interpret(javascript)
@@ -1064,7 +950,7 @@ public class YTPlayerView: UIView {
                       suggestedQuality: YTPlaybackQuality) {
         let indexValue = NSNumber(value: index)
         let startSecondsValue = NSNumber(value :startSeconds)
-        let quality = stringForPlaybackQuality(suggestedQuality)
+        let quality = suggestedQuality.rawValue
         let javascript = String(format: "player.loadPlaylist(%@, %@, %@, '%@');", cueingString, indexValue, startSecondsValue, quality)
         interpret(javascript)
     }
