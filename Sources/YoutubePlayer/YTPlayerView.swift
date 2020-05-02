@@ -110,8 +110,7 @@ public class YTPlayerView: UIView {
      */
     @discardableResult
     public func loadWith(videoId: String, playerVars: [String: AnyHashable]? = [String:AnyHashable]()) -> Bool {
-        let playerParams: [String : AnyHashable] = [ "videoId" : videoId, "playerVars" : playerVars ]
-        return loadWith(playerParams: playerParams)
+        loadWith(playerParams: ["videoId" : videoId, "playerVars" : playerVars])
     }
     
     /**
@@ -197,9 +196,7 @@ public class YTPlayerView: UIView {
         webView = createNewWebView()
         addSubview(webView)
 
-        
         let embedHTMLTemplate = ytPlayerHTMLString
-
         // Render the playerVars as a JSON dictionary.
         if let jsonData = try? JSONSerialization.data(withJSONObject: playerParams, options: JSONSerialization.WritingOptions.prettyPrinted), let playerVarsJsonString = String(data: jsonData, encoding: .utf8), let originURL = originURL {
             let embedHTML = String(format:embedHTMLTemplate, playerVarsJsonString)
@@ -214,11 +211,8 @@ public class YTPlayerView: UIView {
                 addSubview(initialLoadingView)
                 self.initialLoadingView = initialLoadingView
             }
-            
             return true
-        
         }
-//        print("Attempted configuration of player with invalid playerVars: \(playerParams)")
         return false
     }
         
@@ -233,7 +227,7 @@ public class YTPlayerView: UIView {
      *   https://developers.google.com/youtube/iframe_api_reference#playVideo
      */
     func playVideo() {
-        interpret("player.playVideo();")
+        javascript("player.playVideo();")
     }
     
     /**
@@ -245,7 +239,7 @@ public class YTPlayerView: UIView {
         if let url = URL(string: String(format:"ytplayer://onStateChange?data=%@", YTPlayerState.paused.rawValue)) {
             notifyDelegateOfYouTubeCallbackUrl(url: url)
         }
-        interpret("player.pauseVideo();")
+        javascript("player.pauseVideo();")
     }
     
     /**
@@ -254,7 +248,7 @@ public class YTPlayerView: UIView {
      *   https://developers.google.com/youtube/iframe_api_reference#stopVideo
      */
     public func stopVideo() {
-        interpret("player.stopVideo();")
+        javascript("player.stopVideo();")
     }
     
     /**
@@ -267,20 +261,7 @@ public class YTPlayerView: UIView {
      *                       outside what is currently buffered. Recommended to set to YES.
      */
     public func seek(toSeconds: Float, allowSeekAhead: Bool) {
-        let secondsValue: NSNumber = NSNumber(value: toSeconds)
-        let allowSeekAheadValue = stringForJSBoolean(allowSeekAhead)
-        let command = String(format: "player.seekTo(%@, %@);", secondsValue, allowSeekAheadValue)
-        interpret(command)
-    }
-            
-    /**
-     * Private method to convert a Objective-C BOOL value to JS boolean value.
-     *
-     * @param boolValue Objective-C BOOL value.
-     * @return JavaScript Boolean value, i.e. "true" or "false".
-     */
-    func stringForJSBoolean(_ boolValue: Bool) -> String {
-      return boolValue ? "true" : "false";
+        javascript("player.seekTo(\(toSeconds), \(allowSeekAhead);")
     }
     
     // MARK: - Cueing controls
@@ -297,32 +278,14 @@ public class YTPlayerView: UIView {
     *
     * @param videoId A video ID to cue.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
-    */
-    func cueVideoById(_ videoId: String,
-                      startSeconds: Float) {
-        let startSecondsValue:NSNumber = NSNumber(value: startSeconds)
-        let javascript = String(format: "player.cueVideoById('%@', %@);", videoId, startSecondsValue)
-        interpret(javascript)
-    }
-
-    /**
-    * Cues a given video by its video ID for playback starting and ending at the given times.
-    *  Cueing loads a video, but does not start video playback. This
-    * method corresponds with its JavaScript API equivalent as documented here:
-    *    https://developers.google.com/youtube/iframe_api_reference#cueVideoById
-    *
-    * @param videoId A video ID to cue.
-    * @param startSeconds Time in seconds to start the video when playVideo() is called.
     * @param endSeconds Time in seconds to end the video after it begins playing.
     */
-    func cueVideoById(videoId: String,
-                      startSeconds: Float,
-                      endSeconds: Float) {
-        let startSecondsValue = NSNumber(value: startSeconds)
-        let endSecondsValue = NSNumber(value :endSeconds)
-        let javascript = String(format: "player.cueVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@});", videoId, startSecondsValue, endSecondsValue)
-        interpret(javascript)
+    func cueVideoById(_ videoId: String, startSeconds: Float, endSeconds: Float? = nil) {
+        if let endSeconds = endSeconds {
+            javascript("player.cueVideoById({'videoId': '\(videoId)', 'startSeconds': \(startSeconds), 'endSeconds': \(endSeconds)});")
+        } else {
+            javascript("player.cueVideoById('\(videoId)', \(startSeconds));")
+        }
     }
 
     /**
@@ -333,28 +296,14 @@ public class YTPlayerView: UIView {
     *
     * @param videoId A video ID to load and begin playing.
     * @param startSeconds Time in seconds to start the video when it has loaded.
-    */
-    func loadVideoById(videoId: String, startSeconds: Float) {
-        let startSecondsValue = NSNumber(value: startSeconds)
-        let javascript = String(format: "player.loadVideoById('%@', %@);", videoId, startSecondsValue)
-        interpret(javascript)
-    }
-
-    /**
-    * Loads a given video by its video ID for playback starting and ending at the given times.
-    * Loading a video both loads it and begins playback. This method
-    * corresponds with its JavaScript API equivalent as documented here:
-    *    https://developers.google.com/youtube/iframe_api_reference#loadVideoById
-    *
-    * @param videoId A video ID to load and begin playing.
-    * @param startSeconds Time in seconds to start the video when it has loaded.
     * @param endSeconds Time in seconds to end the video after it begins playing.
     */
-    func loadVideoById(videoId: String, startSeconds: Float, endSeconds: Float) {
-        let startSecondsValue = NSNumber(value:startSeconds)
-        let endSecondsValue = NSNumber(value:endSeconds)
-        let javascript = String(format:"player.loadVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@});",videoId, startSecondsValue, endSecondsValue)
-        interpret(javascript)
+    func loadVideoById(videoId: String, startSeconds: Float, endSeconds: Float? = nil) {
+        if let endSeconds = endSeconds {
+            javascript("player.loadVideoById({'videoId': '\(videoId)', 'startSeconds': \(startSeconds), 'endSeconds': \(endSeconds)});")
+        } else {
+            javascript("player.loadVideoById('\(videoId)', \(startSeconds));")
+        }
     }
 
     /**
@@ -362,65 +311,34 @@ public class YTPlayerView: UIView {
     * Cueing loads a video, but does not start video playback.
     * This method corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#cueVideoByUrl
-    *
     * @param videoURL URL of a YouTube video to cue for playback.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
+     * @param endSeconds Time in seconds to end the video after it begins playing.
     */
-    func cueVideoByURL(videoURL: String, startSeconds: Float) {
-        let startSecondsValue = NSNumber(value: startSeconds)
-        let javascript = String(format:"player.cueVideoByUrl('%@', %@);", videoURL, startSecondsValue)
-        interpret(javascript)
+    func cueVideoByURL(videoURL: String, startSeconds: Float, endSeconds: Float? = nil) {
+        if let endSeconds = endSeconds {
+            javascript("player.cueVideoByUrl('\(videoURL)', \(startSeconds), \(endSeconds));")
+        } else {
+            javascript("player.cueVideoByUrl('\(videoURL)', \(startSeconds));")
+        }
     }
-    
-    /**
-    * Cues a given video by its URL on YouTube.com for playback starting at the given time.
-    * Cueing loads a video, but does not start video playback.
-    * This method corresponds with its JavaScript API equivalent as documented here:
-    *    https://developers.google.com/youtube/iframe_api_reference#cueVideoByUrl
-    *
-    * @param videoURL URL of a YouTube video to cue for playback.
-    * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
-    * @param endSeconds Time in seconds to end the video after it begins playing.
-    */
-    func cueVideoByURL(videoURL: String, startSeconds: Float, endSeconds: Float) {
-        let startSecondsValue = NSNumber(value: startSeconds)
-        let endSecondsValue = NSNumber(value: endSeconds)
-        let javascript = String(format: "player.cueVideoByUrl('%@', %@, %@);", videoURL, startSecondsValue, endSecondsValue)
-        interpret(javascript)
-    }
-    
+        
     /**
     * Loads a given video by its video ID for playback starting at the given time.
     * Loading a video both loads it and begins playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
-    *    https://developers.google.com/youtube/iframe_api_reference#loadVideoByUrl
-    *
-    * @param videoURL URL of a YouTube video to load and play.
-    * @param startSeconds Time in seconds to start the video when it has loaded.
-    */
-    func loadVideoByURL(_ videoURL: String, startSeconds: Float) {
-        let startSecondsValue = NSNumber(value:startSeconds)
-        let javascript = String(format: "player.loadVideoByUrl('%@', %@);", videoURL, startSecondsValue)
-        interpret(javascript)
-    }
-    
-    /**
-    * Loads a given video by its video ID for playback starting and ending at the given times.
-    * Loading a video both loads it and begins playback. This method
-    * corresponds with its JavaScript API equivalent as documented here:
-    *    https://developers.google.com/youtube/iframe_api_reference#loadVideoByUrl
+    * https://developers.google.com/youtube/iframe_api_reference#loadVideoByUrl
     *
     * @param videoURL URL of a YouTube video to load and play.
     * @param startSeconds Time in seconds to start the video when it has loaded.
     * @param endSeconds Time in seconds to end the video after it begins playing.
     */
-    func loadVideoByURL(_ videoURL: String,
-                        startSeconds: Float,
-                        endSeconds: Float) {
-        let startSecondsValue = NSNumber(value: startSeconds)
-        let endSecondsValue = NSNumber(value: endSeconds)
-        let javascript = String(format:"player.loadVideoByUrl('%@', %@, %@);", videoURL, startSecondsValue, endSecondsValue)
-        interpret(javascript)
+    func loadVideoByURL(_ videoURL: String, startSeconds: Float, endSeconds: Float? = nil) {
+        if let endSeconds = endSeconds {
+            javascript("player.loadVideoByUrl('\(videoURL)', \(startSeconds), \(endSeconds));")
+        } else {
+            javascript("player.loadVideoByUrl('\(videoURL)', \(startSeconds));")
+        }
     }
 
     // MARK: - Cueing methods for lists
@@ -508,8 +426,7 @@ public class YTPlayerView: UIView {
     * @return An integer value between 0 and 100 representing the current volume.
     */
     func playbackRate() -> Float {
-        let value = interpret("player.getPlaybackRate();") ?? ""
-        return (value as NSString).floatValue
+        ((javascript("player.getPlaybackRate();") ?? "") as NSString).floatValue
     }
 
     /**
@@ -524,8 +441,7 @@ public class YTPlayerView: UIView {
     * @param suggestedRate A playback rate to suggest for the player.
     */
     func setPlaybackRate(suggestedRate: Float) {
-        let javascript = String(format: "player.setPlaybackRate(%f);", suggestedRate)
-        interpret(javascript)
+        javascript("player.setPlaybackRate(\(suggestedRate));")
     }
     
     /**
@@ -537,7 +453,7 @@ public class YTPlayerView: UIView {
     * @return An NSArray containing available playback rates. nil if there is an error.
     */
     func availablePlaybackRates() -> [String]? {
-        let returnValue = interpret("player.getAvailablePlaybackRates();")
+        let returnValue = javascript("player.getAvailablePlaybackRates();")
         if let playbackRateData = returnValue?.data(using: .utf8) {
             let playbackRates = try? JSONSerialization.jsonObject(with: playbackRateData, options: [])
             return playbackRates as? [String] ?? [String]()
@@ -556,9 +472,7 @@ public class YTPlayerView: UIView {
     * @param loop A boolean representing whether the player should loop.
     */
     func setLoop(_ loop: Bool) {
-        let loopPlayListValue = stringForJSBoolean(loop)
-        let javascript = String(format: "player.setLoop(%@);", loopPlayListValue)
-        interpret(javascript)
+        javascript("player.setLoop(\(loop));")
     }
 
     /**
@@ -570,9 +484,7 @@ public class YTPlayerView: UIView {
     *                shuffle through the playlist.
     */
     func setShuffle(shuffle: Bool)  {
-        let shufflePlayListValue = stringForJSBoolean(shuffle)
-        let javascript = String(format: "player.setShuffle(%@);", shufflePlayListValue)
-        interpret(javascript)
+        javascript("player.setShuffle(\(shuffle));")
     }
     
     // MARK: - Playback status
@@ -591,7 +503,7 @@ public class YTPlayerView: UIView {
     *         already loaded.
     */
     func videoLoadedFraction() -> Float? {
-        return Float(interpret("player.getVideoLoadedFraction();") ?? "")
+        return Float(javascript("player.getVideoLoadedFraction();") ?? "")
     }
 
     /**
@@ -602,7 +514,7 @@ public class YTPlayerView: UIView {
     * @return |YTPlayerState| representing the state of the player.
     */
     func playerState() -> YTPlayerState  {
-        YTPlayerState(rawValue: interpret("player.getPlayerState();") ?? "") ?? .unknown
+        YTPlayerState(rawValue: javascript("player.getPlayerState();") ?? "") ?? .unknown
     }
 
     /**
@@ -613,7 +525,7 @@ public class YTPlayerView: UIView {
     * @return Time in seconds since the video started playing.
     */
     func currentTime() -> Float? {
-        return Float(interpret("player.getCurrentTime();") ?? "")
+        return Float(javascript("player.getCurrentTime();") ?? "")
     }
 
     
@@ -631,7 +543,7 @@ public class YTPlayerView: UIView {
     * @return Length of the video in seconds.
     */
     func duration() -> TimeInterval? {
-        let value = interpret("player.getDuration();") ?? ""
+        let value = javascript("player.getDuration();") ?? ""
         return TimeInterval(value)
     }
 
@@ -643,7 +555,7 @@ public class YTPlayerView: UIView {
     * @return The YouTube.com URL for the video. Returns nil if no video is loaded yet.
     */
     func videoUrl() -> NSURL? {
-        let val = interpret("player.getVideoUrl();")
+        let val = javascript("player.getVideoUrl();")
         return NSURL(string: val ?? "")
     }
 
@@ -655,7 +567,7 @@ public class YTPlayerView: UIView {
     * @return The embed code for the current video. Returns nil if no video is loaded yet.
     */
     func videoEmbedCode() -> String {
-      return interpret("player.getVideoEmbedCode();") ?? ""
+      return javascript("player.getVideoEmbedCode();") ?? ""
     }
 
     // MARK: - Retrieving playlist information
@@ -672,7 +584,7 @@ public class YTPlayerView: UIView {
     * @return An NSArray containing all the video IDs in the current playlist. |nil| on error.
     */
     func playlist() -> [String] {
-        let returnValue = interpret("player.getPlaylist();")
+        let returnValue = javascript("player.getPlaylist();")
         if let playlistData = returnValue?.data(using: .utf8) {
             let videoIds = try? JSONSerialization.jsonObject(with: playlistData, options: [])
             return videoIds as? [String] ?? [String]()
@@ -688,7 +600,7 @@ public class YTPlayerView: UIView {
     * @return The 0-based index of the currently playing item in the playlist.
     */
     func playlistIndex() -> Int {
-        let returnValue = interpret("player.getPlaylistIndex();") ?? ""
+        let returnValue = javascript("player.getPlaylistIndex();") ?? ""
         return Int(returnValue) ?? 0
     }
 
@@ -704,7 +616,7 @@ public class YTPlayerView: UIView {
     *   https://developers.google.com/youtube/iframe_api_reference#nextVideo
     */
     func nextVideo() {
-        interpret("player.nextVideo();")
+        javascript("player.nextVideo();")
     }
 
     /**
@@ -713,7 +625,7 @@ public class YTPlayerView: UIView {
     *   https://developers.google.com/youtube/iframe_api_reference#previousVideo
     */
     func previousVideo() {
-        interpret("player.previousVideo();")
+        javascript("player.previousVideo();")
     }
 
     /**
@@ -724,8 +636,7 @@ public class YTPlayerView: UIView {
     * @param index The 0-indexed position of the video in the playlist to load and play.
     */
     func playVideoAt(index: Int) {
-        let javascript = String(format: "player.playVideoAt(%@);", NSNumber(value: index))
-        interpret(javascript)
+        javascript("player.playVideoAt(\(index));")
     }
 
     /**
@@ -839,10 +750,7 @@ public class YTPlayerView: UIView {
     func cuePlaylist(cueingString: String,
                      index: Int,
                      startSeconds: Float) {
-        let indexValue = NSNumber(value: index)
-        let startSecondsValue = NSNumber(value:startSeconds)
-        let javascript = String(format: "player.cuePlaylist(%@, %@, %@);", cueingString, indexValue, startSecondsValue)
-        interpret(javascript)
+        javascript("player.cuePlaylist(\(cueingString), \(index), \(startSeconds));")
     }
 
     /**
@@ -858,10 +766,7 @@ public class YTPlayerView: UIView {
     func loadPlaylist(cueingString: String,
                       index: Int,
                       startSeconds: Float) {
-        let indexValue = NSNumber(value: index)
-        let startSecondsValue = NSNumber(value :startSeconds)
-        let javascript = String(format: "player.loadPlaylist(%@, %@, %@);", cueingString, indexValue, startSecondsValue)
-        interpret(javascript)
+        javascript("player.loadPlaylist(\(cueingString), \(index), \(startSeconds));")
     }
 
     /**
@@ -885,10 +790,9 @@ public class YTPlayerView: UIView {
      * @return JavaScript response from evaluating code.
      */
     @discardableResult
-    func interpret(_ javascript: String) -> String? {
-        return webView.stringByEvaluatingJavaScript(from: javascript)
+    func javascript(_ javascript: String) -> String? {
+        webView.stringByEvaluatingJavaScript(from: javascript)
     }
-
 
     func createNewWebView() -> UIWebView {
         let webView = UIWebView(frame: self.bounds)
