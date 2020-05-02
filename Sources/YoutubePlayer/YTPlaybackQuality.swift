@@ -1,3 +1,11 @@
+//
+//  YTPlaybackQuality.swift
+//  YouTubeiOSPlayerHelper
+//
+//  Created by Sacha DSO on 02/05/2020.
+//  Copyright © 2020 YouTube Developer Relations. All rights reserved.
+//
+
 // Copyright 2014 Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +20,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#import <UIKit/UIKit.h>
+import Foundation
 
-#import "AppDelegate.h"
-
-int main(int argc, char* argv[]) {
-  @autoreleasepool {
-    return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
-  }
+/** These enums represent the resolution of the currently loaded video. */
+public enum YTPlaybackQuality {
+    case small
+    case medium
+    case large
+    case hd720
+    case hd1080
+    case highRes
+    case auto /** Addition for YouTube Live Events. */
+    case `default`
+    case unknown /** This should never be returned. It is here for future proofing. */
 }

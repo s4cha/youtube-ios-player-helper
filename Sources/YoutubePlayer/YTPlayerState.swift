@@ -1,3 +1,11 @@
+//
+//  YTPlayerState.swift
+//  YouTubeiOSPlayerHelper
+//
+//  Created by Sacha DSO on 02/05/2020.
+//  Copyright © 2020 YouTube Developer Relations. All rights reserved.
+//
+
 // Copyright 2014 Google Inc. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,8 +20,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#import <UIKit/UIKit.h>
+import Foundation
 
-@interface AppDelegate : UIResponder<UIApplicationDelegate>
-
-@end
+/** These enums represent the state of the current video in the player. */
+public enum YTPlayerState {
+    case unstarted
+    case ended
+    case playing
+    case paused
+    case buffering
+    case queued
+    case unknown
+}
