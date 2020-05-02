@@ -102,7 +102,7 @@ public class YTPlayerView: UIView {
      *
      * This method reloads the entire contents of the UIWebView and regenerates its HTML contents.
      * To change the currently loaded video without reloading the entire UIWebView, use the
-     * YTPlayerView::cueVideoById:startSeconds:suggestedQuality: family of methods.
+     * YTPlayerView::cueVideoById:startSeconds: family of methods.
      *
      * @param videoId The YouTube video ID of the video to load in the player view.
      * @param playerVars An NSDictionary of player parameters.
@@ -129,7 +129,7 @@ public class YTPlayerView: UIView {
      *
      * This method reloads the entire contents of the UIWebView and regenerates its HTML contents.
      * To change the currently loaded video without reloading the entire UIWebView, use the
-     * YTPlayerView::cuePlaylistByPlaylistId:index:startSeconds:suggestedQuality:
+     * YTPlayerView::cuePlaylistByPlaylistId:index:startSeconds:
      * family of methods.
      *
      * @param playlistId The YouTube playlist ID of the playlist to load in the player view.
@@ -290,8 +290,8 @@ public class YTPlayerView: UIView {
     //   https://developers.google.com/youtube/iframe_api_reference#Queueing_Functions
     
     /**
-    * Cues a given video by its video ID for playback starting at the given time and with the
-    * suggested quality. Cueing loads a video, but does not start video playback. This method
+    * Cues a given video by its video ID for playback starting at the given time.
+    *  Cueing loads a video, but does not start video playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#cueVideoById
     *
@@ -300,153 +300,126 @@ public class YTPlayerView: UIView {
     * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
     func cueVideoById(_ videoId: String,
-                      startSeconds: Float,
-                      suggestedQuality: YTPlaybackQuality) {
+                      startSeconds: Float) {
         let startSecondsValue:NSNumber = NSNumber(value: startSeconds)
-        let qualityValue = suggestedQuality.rawValue
-        let javascript = String(format: "player.cueVideoById('%@', %@, '%@');", videoId, startSecondsValue, qualityValue)
+        let javascript = String(format: "player.cueVideoById('%@', %@);", videoId, startSecondsValue)
         interpret(javascript)
     }
 
-    
     /**
-    * Cues a given video by its video ID for playback starting and ending at the given times
-    * with the suggested quality. Cueing loads a video, but does not start video playback. This
+    * Cues a given video by its video ID for playback starting and ending at the given times.
+    *  Cueing loads a video, but does not start video playback. This
     * method corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#cueVideoById
     *
     * @param videoId A video ID to cue.
     * @param startSeconds Time in seconds to start the video when playVideo() is called.
     * @param endSeconds Time in seconds to end the video after it begins playing.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
     func cueVideoById(videoId: String,
                       startSeconds: Float,
-                      endSeconds: Float,
-                      suggestedQuality: YTPlaybackQuality) {
+                      endSeconds: Float) {
         let startSecondsValue = NSNumber(value: startSeconds)
         let endSecondsValue = NSNumber(value :endSeconds)
-        let quality = suggestedQuality.rawValue
-        let javascript = String(format: "player.cueVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@, 'suggestedQuality': '%@'});", videoId, startSecondsValue, endSecondsValue, quality)
+        let javascript = String(format: "player.cueVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@});", videoId, startSecondsValue, endSecondsValue)
         interpret(javascript)
     }
 
     /**
-    * Loads a given video by its video ID for playback starting at the given time and with the
-    * suggested quality. Loading a video both loads it and begins playback. This method
+    * Loads a given video by its video ID for playback starting at the given time.
+    * Loading a video both loads it and begins playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#loadVideoById
     *
     * @param videoId A video ID to load and begin playing.
     * @param startSeconds Time in seconds to start the video when it has loaded.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func loadVideoById(videoId: String, startSeconds: Float, suggestedQuality: YTPlaybackQuality) {
-        let startSecondsValue = NSNumber(value:startSeconds)
-        let quality = suggestedQuality.rawValue
-        let javascript = String(format: "player.loadVideoById('%@', %@, '%@');", videoId, startSecondsValue, quality)
+    func loadVideoById(videoId: String, startSeconds: Float) {
+        let startSecondsValue = NSNumber(value: startSeconds)
+        let javascript = String(format: "player.loadVideoById('%@', %@);", videoId, startSecondsValue)
         interpret(javascript)
     }
 
     /**
-    * Loads a given video by its video ID for playback starting and ending at the given times
-    * with the suggested quality. Loading a video both loads it and begins playback. This method
+    * Loads a given video by its video ID for playback starting and ending at the given times.
+    * Loading a video both loads it and begins playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#loadVideoById
     *
     * @param videoId A video ID to load and begin playing.
     * @param startSeconds Time in seconds to start the video when it has loaded.
     * @param endSeconds Time in seconds to end the video after it begins playing.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func loadVideoById(videoId: String, startSeconds: Float, endSeconds: Float, suggestedQuality: YTPlaybackQuality) {
+    func loadVideoById(videoId: String, startSeconds: Float, endSeconds: Float) {
         let startSecondsValue = NSNumber(value:startSeconds)
         let endSecondsValue = NSNumber(value:endSeconds)
-        let quality = suggestedQuality.rawValue
-        let javascript = String(format:"player.loadVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@, 'suggestedQuality': '%@'});",videoId, startSecondsValue, endSecondsValue, quality)
+        let javascript = String(format:"player.loadVideoById({'videoId': '%@', 'startSeconds': %@, 'endSeconds': %@});",videoId, startSecondsValue, endSecondsValue)
         interpret(javascript)
     }
 
     /**
-    * Cues a given video by its URL on YouTube.com for playback starting at the given time
-    * and with the suggested quality. Cueing loads a video, but does not start video playback.
+    * Cues a given video by its URL on YouTube.com for playback starting at the given time.
+    * Cueing loads a video, but does not start video playback.
     * This method corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#cueVideoByUrl
     *
     * @param videoURL URL of a YouTube video to cue for playback.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func cueVideoByURL(videoURL: String,
-                       startSeconds: Float,
-                       suggestedQuality: YTPlaybackQuality) {
+    func cueVideoByURL(videoURL: String, startSeconds: Float) {
         let startSecondsValue = NSNumber(value: startSeconds)
-        let qualityValue = suggestedQuality.rawValue
-        let javascript = String(format:"player.cueVideoByUrl('%@', %@, '%@');", videoURL, startSecondsValue, qualityValue)
+        let javascript = String(format:"player.cueVideoByUrl('%@', %@);", videoURL, startSecondsValue)
         interpret(javascript)
     }
     
     /**
-    * Cues a given video by its URL on YouTube.com for playback starting at the given time
-    * and with the suggested quality. Cueing loads a video, but does not start video playback.
+    * Cues a given video by its URL on YouTube.com for playback starting at the given time.
+    * Cueing loads a video, but does not start video playback.
     * This method corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#cueVideoByUrl
     *
     * @param videoURL URL of a YouTube video to cue for playback.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
     * @param endSeconds Time in seconds to end the video after it begins playing.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func cueVideoByURL(videoURL: String,
-                       startSeconds: Float,
-                       endSeconds: Float,
-                       suggestedQuality: YTPlaybackQuality) {
+    func cueVideoByURL(videoURL: String, startSeconds: Float, endSeconds: Float) {
         let startSecondsValue = NSNumber(value: startSeconds)
         let endSecondsValue = NSNumber(value: endSeconds)
-        let quality = suggestedQuality.rawValue
-        let javascript = String(format: "player.cueVideoByUrl('%@', %@, %@, '%@');", videoURL, startSecondsValue, endSecondsValue, quality)
+        let javascript = String(format: "player.cueVideoByUrl('%@', %@, %@);", videoURL, startSecondsValue, endSecondsValue)
         interpret(javascript)
     }
     
     /**
-    * Loads a given video by its video ID for playback starting at the given time
-    * with the suggested quality. Loading a video both loads it and begins playback. This method
+    * Loads a given video by its video ID for playback starting at the given time.
+    * Loading a video both loads it and begins playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#loadVideoByUrl
     *
     * @param videoURL URL of a YouTube video to load and play.
     * @param startSeconds Time in seconds to start the video when it has loaded.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func loadVideoByURL(_ videoURL: String,
-                        startSeconds: Float,
-                        suggestedQuality: YTPlaybackQuality) {
+    func loadVideoByURL(_ videoURL: String, startSeconds: Float) {
         let startSecondsValue = NSNumber(value:startSeconds)
-        let qualityValue = suggestedQuality.rawValue
-        let command = String(format: "player.loadVideoByUrl('%@', %@, '%@');", videoURL, startSecondsValue, qualityValue)
-        interpret(command)
+        let javascript = String(format: "player.loadVideoByUrl('%@', %@);", videoURL, startSecondsValue)
+        interpret(javascript)
     }
     
     /**
-    * Loads a given video by its video ID for playback starting and ending at the given times
-    * with the suggested quality. Loading a video both loads it and begins playback. This method
+    * Loads a given video by its video ID for playback starting and ending at the given times.
+    * Loading a video both loads it and begins playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#loadVideoByUrl
     *
     * @param videoURL URL of a YouTube video to load and play.
     * @param startSeconds Time in seconds to start the video when it has loaded.
     * @param endSeconds Time in seconds to end the video after it begins playing.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
     func loadVideoByURL(_ videoURL: String,
                         startSeconds: Float,
-                        endSeconds: Float,
-                        suggestedQuality:YTPlaybackQuality) {
+                        endSeconds: Float) {
         let startSecondsValue = NSNumber(value: startSeconds)
         let endSecondsValue = NSNumber(value: endSeconds)
-        let quality = suggestedQuality.rawValue
-            let javascript = String(format:"player.loadVideoByUrl('%@', %@, %@, '%@');",
-          videoURL, startSecondsValue, endSecondsValue, quality)
+        let javascript = String(format:"player.loadVideoByUrl('%@', %@, %@);", videoURL, startSecondsValue, endSecondsValue)
         interpret(javascript)
     }
 
@@ -458,19 +431,17 @@ public class YTPlayerView: UIView {
     
     /**
     * Cues a given playlist with the given ID. The |index| parameter specifies the 0-indexed
-    * position of the first video to play, starting at the given time and with the
-    * suggested quality. Cueing loads a playlist, but does not start video playback. This method
+    * position of the first video to play, starting at the given time. Cueing loads a playlist, but does not start video playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#cuePlaylist
     *
     * @param playlistId Playlist ID of a YouTube playlist to cue.
     * @param index A 0-indexed position specifying the first video to play.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func cuePlaylistBy(playlistId: String, index: Int, startSeconds: Float, suggestedQuality: YTPlaybackQuality) {
+    func cuePlaylistBy(playlistId: String, index: Int, startSeconds: Float) {
         let playlistIdString = String(format: "'%@'", playlistId)
-        cuePlaylist(cueingString: playlistIdString, index: index, startSeconds: startSeconds, suggestedQuality: suggestedQuality)
+        cuePlaylist(cueingString: playlistIdString, index: index, startSeconds: startSeconds)
     }
 
     /**
@@ -483,52 +454,46 @@ public class YTPlayerView: UIView {
     * @param videoIds An NSArray of video IDs to compose the playlist of.
     * @param index A 0-indexed position specifying the first video to play.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func cuePlaylistBy(videoIds:[String], index: Int, startSeconds: Float, suggestedQuality: YTPlaybackQuality) {
+    func cuePlaylistBy(videoIds:[String], index: Int, startSeconds: Float) {
         cuePlaylist(cueingString: stringFromVideoIdArray(videoIds: videoIds),
                     index: index,
-                    startSeconds: startSeconds,
-                    suggestedQuality: suggestedQuality)
+                    startSeconds: startSeconds)
     }
     
     /**
     * Loads a given playlist with the given ID. The |index| parameter specifies the 0-indexed
-    * position of the first video to play, starting at the given time and with the
-    * suggested quality. Loading a playlist starts video playback. This method
+    * position of the first video to play, starting at the given time.
+    * Loading a playlist starts video playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#loadPlaylist
     *
     * @param playlistId Playlist ID of a YouTube playlist to cue.
     * @param index A 0-indexed position specifying the first video to play.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func loadPlaylistBy(playlistId: String, index: Int, startSeconds: Float, suggestedQuality: YTPlaybackQuality) {
+    func loadPlaylistBy(playlistId: String, index: Int, startSeconds: Float) {
         let playlistIdString = String(format: "'%@'", playlistId)
         loadPlaylist(cueingString: playlistIdString,
                      index: index,
-                     startSeconds: startSeconds,
-                     suggestedQuality: suggestedQuality)
+                     startSeconds: startSeconds)
     }
     
     /**
     * Loads a playlist of videos with the given video IDs. The |index| parameter specifies the
-    * 0-indexed position of the first video to play, starting at the given time and with the
-    * suggested quality. Loading a playlist starts video playback. This method
+    * 0-indexed position of the first video to play, starting at the given time.
+    * Loading a playlist starts video playback. This method
     * corresponds with its JavaScript API equivalent as documented here:
     *    https://developers.google.com/youtube/iframe_api_reference#loadPlaylist
     *
     * @param videoIds An NSArray of video IDs to compose the playlist of.
     * @param index A 0-indexed position specifying the first video to play.
     * @param startSeconds Time in seconds to start the video when YTPlayerView::playVideo is called.
-    * @param suggestedQuality YTPlaybackQuality value suggesting a playback quality.
     */
-    func loadPlaylistByVideos(videoIds: [String], index: Int, startSeconds: Float, suggestedQuality: YTPlaybackQuality) {
+    func loadPlaylistByVideos(videoIds: [String], index: Int, startSeconds: Float) {
         loadPlaylist(cueingString: stringFromVideoIdArray(videoIds: videoIds),
                      index: index,
-                     startSeconds: startSeconds,
-                     suggestedQuality: suggestedQuality)
+                     startSeconds: startSeconds)
     }
 
     // MARK: - Setting the playback rate
@@ -651,38 +616,6 @@ public class YTPlayerView: UIView {
         return Float(interpret("player.getCurrentTime();") ?? "")
     }
 
-    // MARK: - Playback quality
-    
-
-    // Playback quality. These methods correspond to the JavaScript
-    // methods defined here:
-    //   https://developers.google.com/youtube/js_api_reference#Playback_quality
-    
-    /**
-    * Returns the playback quality. This method corresponds to the
-    * JavaScript API defined here:
-    *   https://developers.google.com/youtube/iframe_api_reference#getPlaybackQuality
-    *
-    * @return YTPlaybackQuality representing the current playback quality.
-    */
-    func playbackQuality() -> YTPlaybackQuality {
-      let qualityValue = interpret("player.getPlaybackQuality();")
-        return playbackQualityForString(qualityValue ?? "")
-    }
-
-    /**
-    * Suggests playback quality for the video. It is recommended to leave this setting to
-    * |default|. This method corresponds to the JavaScript API defined here:
-    *   https://developers.google.com/youtube/iframe_api_reference#setPlaybackQuality
-    *
-    * @param quality YTPlaybackQuality value to suggest for the player.
-    */
-    func setPlaybackQuality(suggestedQuality: YTPlaybackQuality) {
-        let quality =  suggestedQuality.rawValue
-        let javascript = String(format:"player.setPlaybackQuality('%@');", quality)
-        interpret(javascript)
-    }
-
     
     // MARK: - Retrieving video information
 
@@ -795,23 +728,6 @@ public class YTPlayerView: UIView {
         interpret(javascript)
     }
 
-    
-    /**
-    * Gets a list of the valid playback quality values, useful in conjunction with
-    * YTPlayerView::setPlaybackQuality. This method corresponds to the
-    * JavaScript API defined here:
-    *   https://developers.google.com/youtube/iframe_api_reference#getAvailableQualityLevels
-    *
-    * @return An NSArray containing available playback quality levels. Returns nil if there is an error.
-    */
-    func availableQualityLevels() -> [YTPlaybackQuality]? {
-        guard let returnValue = interpret("player.getAvailableQualityLevels().toString();") else {
-            return nil
-        }
-        let rawQualityValues = returnValue.components(separatedBy: ",")
-        return rawQualityValues.map { playbackQualityForString($0) }
-    }
-
     /**
      * Convert a quality value from NSString to the typed enum value.
      *
@@ -918,18 +834,14 @@ public class YTPlayerView: UIView {
      *                     video IDs to play with the playlist player.
      * @param index 0-index position of video to start playback on.
      * @param startSeconds Seconds after start of video to begin playback.
-     * @param suggestedQuality Suggested YTPlaybackQuality to play the videos.
      * @return The result of cueing the playlist.
      */
     func cuePlaylist(cueingString: String,
                      index: Int,
-                     startSeconds: Float,
-                     suggestedQuality: YTPlaybackQuality) {
+                     startSeconds: Float) {
         let indexValue = NSNumber(value: index)
         let startSecondsValue = NSNumber(value:startSeconds)
-        let quality = suggestedQuality.rawValue
-        let javascript = String(format: "player.cuePlaylist(%@, %@, %@, '%@');",
-          cueingString, indexValue, startSecondsValue, quality)
+        let javascript = String(format: "player.cuePlaylist(%@, %@, %@);", cueingString, indexValue, startSecondsValue)
         interpret(javascript)
     }
 
@@ -941,17 +853,14 @@ public class YTPlayerView: UIView {
      *                     video IDs to play with the playlist player.
      * @param index 0-index position of video to start playback on.
      * @param startSeconds Seconds after start of video to begin playback.
-     * @param suggestedQuality Suggested YTPlaybackQuality to play the videos.
      * @return The result of cueing the playlist.
      */
     func loadPlaylist(cueingString: String,
                       index: Int,
-                      startSeconds: Float,
-                      suggestedQuality: YTPlaybackQuality) {
+                      startSeconds: Float) {
         let indexValue = NSNumber(value: index)
         let startSecondsValue = NSNumber(value :startSeconds)
-        let quality = suggestedQuality.rawValue
-        let javascript = String(format: "player.loadPlaylist(%@, %@, %@, '%@');", cueingString, indexValue, startSecondsValue, quality)
+        let javascript = String(format: "player.loadPlaylist(%@, %@, %@);", cueingString, indexValue, startSecondsValue)
         interpret(javascript)
     }
 
