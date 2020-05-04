@@ -1,5 +1,5 @@
 import XCTest
-@testable import youtube_ios_player_helper
+@testable import YoutubePlayer
 
 final class youtube_ios_player_helperTests: XCTestCase {
     func testExample() {
