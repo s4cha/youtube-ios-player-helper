@@ -21,6 +21,7 @@
 // limitations under the License.
 
 import UIKit
+import WebKit
 
 /** These enums represent the resolution of the currently loaded video. */
 public enum YTPlaybackQuality: String {
@@ -36,14 +37,14 @@ public enum YTPlaybackQuality: String {
 }
 
 /** These enums represent the state of the current video in the player. */
-public enum YTPlayerState: String {
-    case unstarted = "-1"
-    case ended = "0"
-    case playing = "1"
-    case paused = "2"
-    case buffering = "3"
-    case queued = "5"
-    case unknown = "unknown"
+public enum YTPlayerState: Int {
+    case unstarted = -1
+    case ended = 0
+    case playing = 1
+    case paused = 2
+    case buffering = 3
+    case queued = 5
+    case unknown
 }
 
 /** These enums represent error codes thrown by the player. */
@@ -81,7 +82,7 @@ public class YTPlayerView: UIView {
     /** A delegate to be notified on playback events. */
     public weak var delegate: YTPlayerViewDelegate?
     
-    var webView: UIWebView! = UIWebView()
+    var webView: WKWebView! = WKWebView()
     
     private var originURL: URL?
     private var initialLoadingView: UIView?
@@ -100,8 +101,8 @@ public class YTPlayerView: UIView {
      * both strings and integers are valid values. The full list of parameters is defined at:
      *   https://developers.google.com/youtube/player_parameters?playerVersion=HTML5.
      *
-     * This method reloads the entire contents of the UIWebView and regenerates its HTML contents.
-     * To change the currently loaded video without reloading the entire UIWebView, use the
+     * This method reloads the entire contents of the WKWebView and regenerates its HTML contents.
+     * To change the currently loaded video without reloading the entire WKWebView, use the
      * YTPlayerView::cueVideoById:startSeconds: family of methods.
      *
      * @param videoId The YouTube video ID of the video to load in the player view.
@@ -126,8 +127,8 @@ public class YTPlayerView: UIView {
      * both strings and integers are valid values. The full list of parameters is defined at:
      *   https://developers.google.com/youtube/player_parameters?playerVersion=HTML5.
      *
-     * This method reloads the entire contents of the UIWebView and regenerates its HTML contents.
-     * To change the currently loaded video without reloading the entire UIWebView, use the
+     * This method reloads the entire contents of the WKWebView and regenerates its HTML contents.
+     * To change the currently loaded video without reloading the entire WKWebView, use the
      * YTPlayerView::cuePlaylistByPlaylistId:index:startSeconds:
      * family of methods.
      *
@@ -201,9 +202,7 @@ public class YTPlayerView: UIView {
         if let jsonData = try? JSONSerialization.data(withJSONObject: playerParams, options: JSONSerialization.WritingOptions.prettyPrinted), let playerVarsJsonString = String(data: jsonData, encoding: .utf8), let originURL = originURL {
             let embedHTML = String(format:embedHTMLTemplate, playerVarsJsonString)
             webView.loadHTMLString(embedHTML, baseURL: originURL)
-            webView.delegate = self
-            webView.allowsInlineMediaPlayback = true
-            webView.mediaPlaybackRequiresUserAction = false
+            webView.navigationDelegate = self
             
             if let initialLoadingView = delegate?.playerViewPreferredInitialLoadingView(playerView: self) {
                 initialLoadingView.frame = self.bounds
@@ -261,7 +260,7 @@ public class YTPlayerView: UIView {
      *                       outside what is currently buffered. Recommended to set to YES.
      */
     public func seek(toSeconds: Float, allowSeekAhead: Bool) {
-        javascript("player.seekTo(\(toSeconds), \(allowSeekAhead);")
+        javascript("player.seekTo(\(toSeconds), \(allowSeekAhead));")
     }
     
     // MARK: - Cueing controls
@@ -425,8 +424,12 @@ public class YTPlayerView: UIView {
     *
     * @return An integer value between 0 and 100 representing the current volume.
     */
-    func playbackRate() -> Float {
-        ((javascript("player.getPlaybackRate();") ?? "") as NSString).floatValue
+    func playbackRate(completion: @escaping (Float) -> Void) -> Void {
+        javascriptResult("player.getPlaybackRate();") { result in
+            if let rate = result as? Float {
+                completion(rate)
+            }
+        }
     }
 
     /**
@@ -453,11 +456,12 @@ public class YTPlayerView: UIView {
     * @return An NSArray containing available playback rates. nil if there is an error.
     */
     func availablePlaybackRates() -> [String]? {
-        let returnValue = javascript("player.getAvailablePlaybackRates();")
-        if let playbackRateData = returnValue?.data(using: .utf8) {
-            let playbackRates = try? JSONSerialization.jsonObject(with: playbackRateData, options: [])
-            return playbackRates as? [String] ?? [String]()
-        }
+        //TODO
+//        let returnValue = javascript("player.getAvailablePlaybackRates();")
+//        if let playbackRateData = returnValue?.data(using: .utf8) {
+//            let playbackRates = try? JSONSerialization.jsonObject(with: playbackRateData, options: [])
+//            return playbackRates as? [String] ?? [String]()
+//        }
         return nil
     }
     
@@ -502,8 +506,12 @@ public class YTPlayerView: UIView {
     * @return A float value between 0 and 1 representing the percentage of the video
     *         already loaded.
     */
-    func videoLoadedFraction() -> Float? {
-        return Float(javascript("player.getVideoLoadedFraction();") ?? "")
+    public func videoLoadedFraction(completion: @escaping (Float) -> Void) {
+        javascriptResult("player.getVideoLoadedFraction();") { result in
+            if let result = result as? NSNumber {
+                completion(result.floatValue)
+            }
+        }
     }
 
     /**
@@ -513,8 +521,14 @@ public class YTPlayerView: UIView {
     *
     * @return |YTPlayerState| representing the state of the player.
     */
-    func playerState() -> YTPlayerState  {
-        YTPlayerState(rawValue: javascript("player.getPlayerState();") ?? "") ?? .unknown
+    public func playerState(completion: @escaping (YTPlayerState) -> Void)  {
+        javascriptResult("player.getPlayerState();") { result in
+            if let stateInt = result as? Int, let state = YTPlayerState(rawValue: stateInt) {
+                completion(state)
+            } else {
+                completion(.unknown)
+            }
+        }
     }
 
     /**
@@ -524,8 +538,12 @@ public class YTPlayerView: UIView {
     *
     * @return Time in seconds since the video started playing.
     */
-    func currentTime() -> Float? {
-        return Float(javascript("player.getCurrentTime();") ?? "")
+    public func currentTime(completion: @escaping (Float) -> Void) {
+        javascriptResult("player.getCurrentTime();") { result in
+            if let result = result as? NSNumber {
+                completion(result.floatValue)
+            }
+        }
     }
 
     
@@ -542,9 +560,12 @@ public class YTPlayerView: UIView {
     *
     * @return Length of the video in seconds.
     */
-    func duration() -> TimeInterval? {
-        let value = javascript("player.getDuration();") ?? ""
-        return TimeInterval(value)
+    public func duration(completion: @escaping (TimeInterval) -> Void) {
+        javascriptResult("player.getDuration();") { result in
+            if let result = result as? NSNumber {
+                completion(result.doubleValue)
+            }
+        }
     }
 
     /**
@@ -554,9 +575,12 @@ public class YTPlayerView: UIView {
     *
     * @return The YouTube.com URL for the video. Returns nil if no video is loaded yet.
     */
-    func videoUrl() -> NSURL? {
-        let val = javascript("player.getVideoUrl();")
-        return NSURL(string: val ?? "")
+    public func videoUrl(completion: @escaping (URL) -> Void) {
+        javascriptResult("player.getVideoUrl();") { result in
+            if let urlString = result as? String, let url = URL(string: urlString) {
+                completion(url)
+            }
+        }
     }
 
     /**
@@ -566,8 +590,12 @@ public class YTPlayerView: UIView {
     *
     * @return The embed code for the current video. Returns nil if no video is loaded yet.
     */
-    func videoEmbedCode() -> String {
-      return javascript("player.getVideoEmbedCode();") ?? ""
+    public func videoEmbedCode(completion: @escaping (String) -> Void) {
+        javascriptResult("player.getVideoEmbedCode();") { result in
+            if let result = result as? String {
+                completion(result)
+            }
+        }
     }
 
     // MARK: - Retrieving playlist information
@@ -584,11 +612,12 @@ public class YTPlayerView: UIView {
     * @return An NSArray containing all the video IDs in the current playlist. |nil| on error.
     */
     func playlist() -> [String] {
-        let returnValue = javascript("player.getPlaylist();")
-        if let playlistData = returnValue?.data(using: .utf8) {
-            let videoIds = try? JSONSerialization.jsonObject(with: playlistData, options: [])
-            return videoIds as? [String] ?? [String]()
-        }
+        //TODO
+//        let returnValue = javascript("player.getPlaylist();")
+//        if let playlistData = returnValue?.data(using: .utf8) {
+//            let videoIds = try? JSONSerialization.jsonObject(with: playlistData, options: [])
+//            return videoIds as? [String] ?? [String]()
+//        }
         return [String]()
     }
     
@@ -599,9 +628,12 @@ public class YTPlayerView: UIView {
     *
     * @return The 0-based index of the currently playing item in the playlist.
     */
-    func playlistIndex() -> Int {
-        let returnValue = javascript("player.getPlaylistIndex();") ?? ""
-        return Int(returnValue) ?? 0
+    public func playlistIndex(completion: @escaping (Int) -> Void) {
+        javascriptResult("player.getPlaylistIndex();") { result in
+            if let result = result as? NSNumber {
+                completion(result.intValue)
+            }
+        }
     }
 
     // MARK: - Playing a video in a playlist
@@ -654,7 +686,7 @@ public class YTPlayerView: UIView {
     /**
      * Private method to handle "navigation" to a callback URL of the format
      * ytplayer://action?data=someData
-     * This is how the UIWebView communicates with the containing Objective-C code.
+     * This is how the WKWebView communicates with the containing Objective-C code.
      * Side effects of this method are that it calls methods on this class's delegate.
      *
      * @param url A URL of the format ytplayer://action?data=value.
@@ -668,24 +700,25 @@ public class YTPlayerView: UIView {
         // so we parse out the value.
         let query = url.query
         let data = query?.components(separatedBy: "=").last
-        print(data)
         
         switch action {
         case .onReady:
             initialLoadingView?.removeFromSuperview()
             delegate?.playerViewDidBecomeReady(playerView: self)
         case .onStateChange:
-            let state = YTPlayerState(rawValue: data ?? "") ?? .unknown
-            delegate?.playerViewDidChangeToState(playerView: self, state: state)
+            if let dataInt = Int(data!) {
+                let state = YTPlayerState(rawValue: dataInt) ?? .unknown
+                delegate?.playerView(playerView: self, didChangeTo: state)
+            }
         case .onPlaybackQualityChange:
             let quality = playbackQualityForString(data!)
-            delegate?.playerViewDidChangeToQuality(playerView: self, quality: quality)
+            delegate?.playerView(playerView: self, didChangeTo: quality)
         case .onError:
             let error = YTPlayerError(rawValue: data ?? "") ?? .unknown
-            delegate?.playerViewReceivedError(playerView: self, error: error)
+            delegate?.playerView(playerView: self, didReceiveError: error)
         case .onPlayTime:
-            let time: Float = (data as? NSString)?.floatValue ?? 0
-            delegate?.playerViewDidPlayTime(playerView: self, playTime: time)
+            let time: Float = (data as NSString?)?.floatValue ?? 0
+            delegate?.playerView(playerView: self, didPlayTime: time)
         case .onYouTubeIframeAPIFailedToLoad:
             initialLoadingView?.removeFromSuperview()
         }
@@ -694,7 +727,7 @@ public class YTPlayerView: UIView {
     func handleHttpNavigationToUrl(url: URL) -> Bool {
         // Usually this means the user has clicked on the YouTube logo or an error message in the
         // player. Most URLs should open in the browser. The only http(s) URL that should open in this
-        // UIWebView is the URL for the embed, which is of the format:
+        // WKWebView is the URL for the embed, which is of the format:
         //     http(s)://www.youtube.com/embed/[VIDEO ID]?[PARAMETERS]
         
         let kYTPlayerEmbedUrlRegexPattern = "^http(s)://(www.)youtube.com/embed/(.*)$"
@@ -790,13 +823,24 @@ public class YTPlayerView: UIView {
      * @param jsToExecute The JavaScript code in string format that we want to execute.
      * @return JavaScript response from evaluating code.
      */
-    @discardableResult
-    func javascript(_ javascript: String) -> String? {
-        webView.stringByEvaluatingJavaScript(from: javascript)
+    func javascript(_ javascript: String) {
+        webView.evaluateJavaScript(javascript, completionHandler: nil)
+    }
+    
+    func javascriptResult(_ javascript: String, completion: @escaping (Any) -> Void) {
+        webView.evaluateJavaScript(javascript, completionHandler: { result, error in
+            if let result = result {
+                completion(result)
+            }
+        })
     }
 
-    func createNewWebView() -> UIWebView {
-        let webView = UIWebView(frame: self.bounds)
+    func createNewWebView() -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.allowsPictureInPictureMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+        let webView = WKWebView(frame: bounds, configuration: config)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight ]
         webView.scrollView.isScrollEnabled = false
         webView.scrollView.bounces = false
@@ -820,20 +864,29 @@ public class YTPlayerView: UIView {
 }
 
 
-extension YTPlayerView: UIWebViewDelegate {
-    public func webView(_ webView: UIWebView, shouldStartLoadWith request: URLRequest, navigationType: UIWebView.NavigationType) -> Bool {
+extension YTPlayerView: WKNavigationDelegate {
+    
+    public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        let request = navigationAction.request
         if request.url?.host == originURL?.host {
-          return true
+            decisionHandler(.allow)
+            return
         } else if request.url?.scheme == "ytplayer" {
             notifyDelegateOfYouTubeCallbackUrl(url: request.url!)
-            return false
-        } else if request.url?.scheme == "http" || request.url?.scheme == "https" {
-            return handleHttpNavigationToUrl(url: request.url!)
-        }
-        return true
+            decisionHandler(.cancel)
+            return
+         } else if request.url?.scheme == "http" || request.url?.scheme == "https" {
+            if handleHttpNavigationToUrl(url: request.url!) {
+                decisionHandler(.allow)
+            } else {
+                decisionHandler(.cancel)
+            }
+            return
+         }
+        decisionHandler(.allow)
     }
-    
-    public func webView(_ webView: UIWebView, didFailLoadWithError error: Error) {
+
+    public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         initialLoadingView?.removeFromSuperview()
     }
 }

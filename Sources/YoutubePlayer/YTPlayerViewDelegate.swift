@@ -43,7 +43,7 @@ public protocol YTPlayerViewDelegate: class {
     * @param playerView The YTPlayerView instance where playback state has changed.
     * @param state YTPlayerState designating the new playback state.
     */
-    func playerViewDidChangeToState(playerView: YTPlayerView, state: YTPlayerState)
+    func playerView(playerView: YTPlayerView, didChangeTo state: YTPlayerState)
     
     /**
      * Callback invoked when playback quality has changed.
@@ -51,7 +51,7 @@ public protocol YTPlayerViewDelegate: class {
      * @param playerView The YTPlayerView instance where playback quality has changed.
      * @param quality YTPlaybackQuality designating the new playback quality.
      */
-    func playerViewDidChangeToQuality(playerView: YTPlayerView, quality: YTPlaybackQuality)
+    func playerView(playerView: YTPlayerView, didChangeTo quality: YTPlaybackQuality)
     
     /**
      * Callback invoked when an error has occured.
@@ -59,7 +59,7 @@ public protocol YTPlayerViewDelegate: class {
      * @param playerView The YTPlayerView instance where the error has occurred.
      * @param error YTPlayerError containing the error state.
      */
-    func playerViewReceivedError(playerView: YTPlayerView, error: YTPlayerError)
+    func playerView(playerView: YTPlayerView, didReceiveError error: YTPlayerError)
     
     /**
      * Callback invoked frequently when playBack is playing.
@@ -67,7 +67,7 @@ public protocol YTPlayerViewDelegate: class {
      * @param playerView The YTPlayerView instance where the error has occurred.
      * @param playTime float containing curretn playback time.
      */
-    func playerViewDidPlayTime(playerView: YTPlayerView, playTime: Float)
+    func playerView(playerView: YTPlayerView, didPlayTime time: Float)
     
     /**
      * Callback invoked when setting up the webview to allow custom colours so it fits in
@@ -100,10 +100,10 @@ public protocol YTPlayerViewDelegate: class {
 }
 
 public extension YTPlayerViewDelegate {
-    func playerViewDidChangeToState(playerView: YTPlayerView, state: YTPlayerState) { }
-    func playerViewDidChangeToQuality(playerView: YTPlayerView, quality: YTPlaybackQuality) { }
-    func playerViewReceivedError(playerView: YTPlayerView, error: YTPlayerError) { }
-    func playerViewDidPlayTime(playerView: YTPlayerView, playTime: Float) { }
+    func playerView(playerView: YTPlayerView, didChangeTo state: YTPlayerState) { }
+    func playerView(playerView: YTPlayerView, didChangeTo quality: YTPlaybackQuality) { }
+    func playerView(playerView: YTPlayerView, didReceiveError error: YTPlayerError) { }
+    func playerView(playerView: YTPlayerView, didPlayTime time: Float) { }
     func playerViewPreferredWebViewBackgroundColor(playerView: YTPlayerView) -> UIColor { .black }
     func playerViewPreferredInitialLoadingView(playerView: YTPlayerView) -> UIView? { nil }
 }
