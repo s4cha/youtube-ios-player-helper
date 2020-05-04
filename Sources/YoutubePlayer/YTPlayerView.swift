@@ -667,7 +667,8 @@ public class YTPlayerView: UIView {
         // We know the query can only be of the format ytplayer://action?data=SOMEVALUE,
         // so we parse out the value.
         let query = url.query
-        let data = query?.components(separatedBy: "=").first
+        let data = query?.components(separatedBy: "=").last
+        print(data)
         
         switch action {
         case .onReady:
